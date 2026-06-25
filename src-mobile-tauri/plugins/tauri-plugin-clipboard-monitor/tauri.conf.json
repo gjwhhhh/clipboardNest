@@ -1,0 +1,44 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
+  "productName": "ClipBoard",
+  "version": "0.1.0",
+  "identifier": "com.clipboard-manager.mobile",
+  "build": {
+    "frontendDist": "../src-mobile/dist",
+    "devUrl": "http://localhost:1421",
+    "beforeDevCommand": "cd ../src-mobile && npm run dev",
+    "beforeBuildCommand": "cd ../src-mobile && npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "ClipBoard",
+        "width": 390,
+        "height": 844,
+        "resizable": false,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/Icon.png",
+      "icons/Foreground.png",
+      "icons/Splash.png"
+    ]
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    },
+    "clipboard-monitor": {
+      "enabled": true
+    }
+  }
+}

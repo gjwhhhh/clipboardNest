@@ -1,0 +1,47 @@
+{
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
+  "productName": "剪切板管理器",
+  "version": "0.1.0",
+  "identifier": "com.clipboard-manager",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "macOSPrivateApi": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "剪切板管理器",
+        "width": 700,
+        "height": 500,
+        "minWidth": 500,
+        "minHeight": 400,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true,
+        "visible": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "resources/icons/32x32.png",
+      "resources/icons/128x128.png",
+      "resources/icons/128x128@2x.png",
+      "resources/icons/icon.icns",
+      "resources/icons/icon.ico"
+    ],
+    "macOS": {
+      "signingIdentity": null,
+      "minimumSystemVersion": "10.15"
+    }
+  }
+}

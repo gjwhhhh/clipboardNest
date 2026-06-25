@@ -1,0 +1,73 @@
+{
+  "app": {
+    "title": "剪切板管理器"
+  },
+  "tabs": {
+    "history": "历史",
+    "search": "搜索",
+    "favorites": "收藏",
+    "settings": "设置"
+  },
+  "clipboard": {
+    "empty": "暂无剪切板内容",
+    "copied": "已复制",
+    "deleted": "已删除",
+    "favorited": "已收藏",
+    "unfavorited": "已取消收藏",
+    "pinned": "已置顶",
+    "unpinned": "已取消置顶",
+    "copyFailed": "复制失败",
+    "deleteFailed": "删除失败"
+  },
+  "search": {
+    "placeholder": "搜索历史...",
+    "all": "全部",
+    "text": "文本",
+    "image": "图片",
+    "file": "文件"
+  },
+  "preview": {
+    "title": "预览",
+    "copy": "复制",
+    "copyTime": "复制时间",
+    "sourceApp": "来源应用",
+    "imageNotAvailable": "图片不可用",
+    "unknownSize": "未知大小"
+  },
+  "settings": {
+    "title": "设置",
+    "retentionDays": "保留历史",
+    "days": "天",
+    "maxItems": "最大项目数",
+    "theme": "主题",
+    "themeSystem": "跟随系统",
+    "themeLight": "浅色",
+    "themeDark": "深色",
+    "clearAll": "清除所有历史",
+    "clearConfirm": "确定要清除所有历史记录吗？此操作不可撤销。",
+    "language": "语言",
+    "languageZh": "中文",
+    "languageEn": "English"
+  },
+  "sync": {
+    "title": "同步设置",
+    "enable": "启用局域网同步",
+    "deviceName": "设备名称",
+    "discoveredDevices": "发现的设备",
+    "noDevices": "未发现其他设备",
+    "syncNow": "立即同步",
+    "syncing": "同步中...",
+    "lastSync": "上次同步",
+    "never": "从未同步"
+  },
+  "permission": {
+    "title": "剪切板访问说明",
+    "why": "为什么需要访问剪切板？",
+    "whyDesc": "ClipBoard 需要访问剪切板来记录您的复制历史，方便您随时查找和使用之前复制的内容。",
+    "android12": "Android 12+ 提示",
+    "android12Desc": "在 Android 12 及以上版本中，每次应用读取剪切板时，系统会显示一个提示。这是 Android 的隐私保护机制，属于正常现象。",
+    "reduceTips": "如何减少提示",
+    "reduceTipsDesc": "应用只在您主动打开时读取剪切板，不会在后台频繁访问。您可以放心使用。",
+    "gotIt": "我知道了"
+  }
+}

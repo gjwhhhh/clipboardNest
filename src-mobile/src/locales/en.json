@@ -1,0 +1,73 @@
+{
+  "app": {
+    "title": "Clipboard Manager"
+  },
+  "tabs": {
+    "history": "History",
+    "search": "Search",
+    "favorites": "Favorites",
+    "settings": "Settings"
+  },
+  "clipboard": {
+    "empty": "No clipboard content",
+    "copied": "Copied",
+    "deleted": "Deleted",
+    "favorited": "Favorited",
+    "unfavorited": "Unfavorited",
+    "pinned": "Pinned",
+    "unpinned": "Unpinned",
+    "copyFailed": "Copy failed",
+    "deleteFailed": "Delete failed"
+  },
+  "search": {
+    "placeholder": "Search history...",
+    "all": "All",
+    "text": "Text",
+    "image": "Image",
+    "file": "File"
+  },
+  "preview": {
+    "title": "Preview",
+    "copy": "Copy",
+    "copyTime": "Copy time",
+    "sourceApp": "Source app",
+    "imageNotAvailable": "Image not available",
+    "unknownSize": "Unknown size"
+  },
+  "settings": {
+    "title": "Settings",
+    "retentionDays": "Retention days",
+    "days": "days",
+    "maxItems": "Max items",
+    "theme": "Theme",
+    "themeSystem": "Follow system",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "clearAll": "Clear all history",
+    "clearConfirm": "Are you sure you want to clear all history? This action cannot be undone.",
+    "language": "Language",
+    "languageZh": "中文",
+    "languageEn": "English"
+  },
+  "sync": {
+    "title": "Sync Settings",
+    "enable": "Enable LAN sync",
+    "deviceName": "Device name",
+    "discoveredDevices": "Discovered devices",
+    "noDevices": "No other devices found",
+    "syncNow": "Sync now",
+    "syncing": "Syncing...",
+    "lastSync": "Last sync",
+    "never": "Never synced"
+  },
+  "permission": {
+    "title": "Clipboard Access",
+    "why": "Why clipboard access?",
+    "whyDesc": "ClipBoard needs clipboard access to record your copy history, making it easy to find and reuse previously copied content.",
+    "android12": "Android 12+ Notice",
+    "android12Desc": "On Android 12 and above, the system shows a notification each time an app reads the clipboard. This is a privacy feature of Android.",
+    "reduceTips": "How to reduce notifications",
+    "reduceTipsDesc": "The app only reads the clipboard when you open it, not in the background. You can use it safely.",
+    "gotIt": "Got it"
+  }
+}
