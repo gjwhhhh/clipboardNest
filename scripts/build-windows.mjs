@@ -6,7 +6,7 @@ const isWindowsHost = process.platform === "win32";
 const command = isWindowsHost ? path.join(workspaceRoot, "node_modules", ".bin", "tauri.cmd") : "npx";
 
 const args = isWindowsHost
-  ? ["build", "--bundles", "msi,nsis"]
+  ? ["build", "--bundles", "nsis"]
   : [
       "tauri",
       "build",

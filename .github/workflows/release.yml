@@ -41,7 +41,7 @@ jobs:
             bundle_path: target/release/bundle/dmg/*.dmg
           - os: windows-latest
             build_script: npm run build:windows
-            bundle_path: target/release/bundle/msi/*.msi
+            bundle_path: target/release/bundle/nsis/*.exe
           - os: ubuntu-22.04
             build_script: npm run build:linux
             bundle_path: target/release/bundle/deb/*.deb
