@@ -56,6 +56,9 @@ coverage/
 *.profraw
 *.profdata
 
+# 本地归档（不提交到仓库）
+local-archives/
+
 # 临时文件
 *.tmp
 *.temp
