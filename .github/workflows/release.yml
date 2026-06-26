@@ -39,12 +39,15 @@ jobs:
           - os: macos-latest
             build_script: npm run build:macos
             bundle_path: target/release/bundle/dmg/*.dmg
+            asset_suffix: aarch64.dmg
           - os: windows-latest
             build_script: npm run build:windows
             bundle_path: target/release/bundle/nsis/*.exe
+            asset_suffix: x64-setup.exe
           - os: ubuntu-22.04
             build_script: npm run build:linux
             bundle_path: target/release/bundle/deb/*.deb
+            asset_suffix: amd64.deb
 
     runs-on: ${{ matrix.os }}
 
@@ -84,13 +87,27 @@ jobs:
       - name: Build desktop app
         run: ${{ matrix.build_script }}
 
-      - name: Get version
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      - name: Normalize release asset name
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          matches=( ${{ matrix.bundle_path }} )
+          shopt -u nullglob
+
+          if [ "${#matches[@]}" -ne 1 ]; then
+            echo "Expected exactly one bundle for pattern '${{ matrix.bundle_path }}', found ${#matches[@]}"
+            printf '%s\n' "${matches[@]}"
+            exit 1
+          fi
+
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p release-assets
+          cp "${matches[0]}" "release-assets/ClipboardNest_${version}_${{ matrix.asset_suffix }}"
 
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-          files: ${{ matrix.bundle_path }}
+          files: release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
