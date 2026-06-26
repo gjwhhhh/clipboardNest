@@ -37,19 +37,13 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            tauri_command: ../src-mobile/node_modules/.bin/tauri build --config ../.github/tauri-ci.config.json
-            artifact_name: ClipboardManager_macOS
-            artifact_ext: .dmg
+            build_script: npm run build:macos
             bundle_path: target/release/bundle/dmg/*.dmg
           - os: windows-latest
-            tauri_command: ../src-mobile/node_modules/.bin/tauri.cmd build --config ../.github/tauri-ci.config.json
-            artifact_name: ClipboardManager_Windows
-            artifact_ext: .msi
+            build_script: npm run build:windows
             bundle_path: target/release/bundle/msi/*.msi
           - os: ubuntu-22.04
-            tauri_command: ../src-mobile/node_modules/.bin/tauri build --config ../.github/tauri-ci.config.json
-            artifact_name: ClipboardManager_Linux
-            artifact_ext: .deb
+            build_script: npm run build:linux
             bundle_path: target/release/bundle/deb/*.deb
 
     runs-on: ${{ matrix.os }}
@@ -73,7 +67,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: src-mobile/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -82,19 +76,13 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: |
-            ./src-mobile-tauri -> target
+            ./src-tauri -> target
 
-      - name: Install frontend dependencies
-        working-directory: src-mobile
+      - name: Install dependencies
         run: npm ci
 
-      - name: Build frontend
-        working-directory: src-mobile
-        run: npm run build
-
       - name: Build desktop app
-        working-directory: src-mobile-tauri
-        run: ${{ matrix.tauri_command }}
+        run: ${{ matrix.build_script }}
 
       - name: Get version
         id: version
@@ -104,6 +92,5 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: ${{ matrix.bundle_path }}
-          asset_name: ${{ matrix.artifact_name }}_${{ steps.version.outputs.VERSION }}${{ matrix.artifact_ext }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
