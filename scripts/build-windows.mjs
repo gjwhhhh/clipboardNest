@@ -3,11 +3,10 @@ import path from "node:path";
 
 const workspaceRoot = process.cwd();
 const isWindowsHost = process.platform === "win32";
-const command = isWindowsHost ? process.env.ComSpec || "cmd.exe" : "npx";
-const tauriCmd = path.join(workspaceRoot, "node_modules", ".bin", "tauri.cmd");
+const command = isWindowsHost ? path.join(workspaceRoot, "node_modules", ".bin", "tauri.cmd") : "npx";
 
 const args = isWindowsHost
-  ? ["/d", "/s", "/c", `"${tauriCmd}" build --bundles msi,nsis`]
+  ? ["build", "--bundles", "msi,nsis"]
   : [
       "tauri",
       "build",
@@ -37,6 +36,7 @@ const result = spawnSync(command, args, {
   cwd: workspaceRoot,
   env,
   stdio: "inherit",
+  shell: isWindowsHost,
 });
 
 if (result.error) {
