@@ -3,10 +3,11 @@ import path from "node:path";
 
 const workspaceRoot = process.cwd();
 const isWindowsHost = process.platform === "win32";
-const npxCmd = isWindowsHost ? "npx.cmd" : "npx";
+const command = isWindowsHost ? process.env.ComSpec || "cmd.exe" : "npx";
+const tauriCmd = path.join(workspaceRoot, "node_modules", ".bin", "tauri.cmd");
 
 const args = isWindowsHost
-  ? ["tauri", "build", "--bundles", "msi,nsis"]
+  ? ["/d", "/s", "/c", `"${tauriCmd}" build --bundles msi,nsis`]
   : [
       "tauri",
       "build",
@@ -32,7 +33,7 @@ if (!isWindowsHost) {
   console.log("说明：该路径只产出 NSIS .exe；MSI 仍需在 Windows 主机或 Windows CI 上构建。");
 }
 
-const result = spawnSync(npxCmd, args, {
+const result = spawnSync(command, args, {
   cwd: workspaceRoot,
   env,
   stdio: "inherit",
