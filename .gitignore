@@ -37,6 +37,8 @@ npm-debug.log*
 # Tauri 生成的文件
 src-tauri/gen/
 src-mobile-tauri/gen/
+src-mobile-tauri/plugins/*/.tauri/
+src-mobile-tauri/plugins/*/ios/Package.resolved
 src-mobile-tauri/plugins/*/android/.tauri/
 src-mobile-tauri/plugins/*/android/.gradle/
 src-mobile-tauri/plugins/*/android/build/
@@ -51,6 +53,7 @@ src-mobile-tauri/plugins/*/android/build/
 .cursor/
 .gemini/
 .kiro/
+.omx/
 .mcp.json
 opencode.jsonc
 
