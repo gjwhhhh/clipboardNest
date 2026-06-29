@@ -580,8 +580,10 @@ dependencies = [
 name = "clipboard-manager-mobile"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "clipboard-core",
  "env_logger",
+ "image",
  "local-ip-address",
  "log",
  "rusqlite",
@@ -4338,7 +4340,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tauri",
- "tauri-build",
+ "tauri-plugin",
 ]
 
 [[package]]

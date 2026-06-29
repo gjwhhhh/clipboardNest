@@ -42,8 +42,6 @@ impl MonitorState {
     }
 }
 
-pub struct MonitorStateWrapper(pub Arc<MonitorState>);
-
 /// 处理从原生层收到的剪切板内容
 pub fn handle_clipboard_content(
     conn: &Arc<Mutex<rusqlite::Connection>>,

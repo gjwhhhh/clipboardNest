@@ -1,57 +1,51 @@
+use std::io;
 use std::sync::{Arc, Mutex};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+use rusqlite::Connection;
 use tokio::net::TcpStream;
 
-use super::{SyncData, SyncDevice, SyncMessage};
+use super::{
+    export_sync_data, max_items_from_settings, merge_sync_data, now_secs, read_message,
+    write_message, SyncDevice, SyncMessage, SyncReport,
+};
 
-/// 同步客户端
-pub struct SyncClient {
-    data: Arc<Mutex<SyncData>>,
-}
+pub async fn sync_with_device(
+    db_conn: Arc<Mutex<Connection>>,
+    device: SyncDevice,
+) -> Result<SyncReport, Box<dyn std::error::Error + Send + Sync>> {
+    let mut stream = TcpStream::connect(format!("{}:{}", device.address, device.port)).await?;
 
-impl SyncClient {
-    pub fn new(data: Arc<Mutex<SyncData>>) -> Self {
-        Self { data }
+    let request = SyncMessage {
+        message_type: "request_sync".to_string(),
+        data: serde_json::Value::Null,
+        timestamp: now_secs(),
+    };
+    write_message(&mut stream, &request).await?;
+
+    let response = read_message(&mut stream).await?;
+    let mut report = SyncReport::default();
+    if response.message_type == "sync_data" {
+        let remote_data = serde_json::from_value(response.data)?;
+        let conn = db_conn
+            .lock()
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        let max_items = max_items_from_settings(&conn);
+        report = merge_sync_data(&conn, remote_data, max_items)?;
     }
 
-    /// 与指定设备同步
-    pub async fn sync_with(&self, device: &SyncDevice) -> Result<(), Box<dyn std::error::Error>> {
-        let mut stream = TcpStream::connect(format!("{}:{}", device.address, device.port)).await?;
+    let local_data = {
+        let conn = db_conn
+            .lock()
+            .map_err(|e| io::Error::other(e.to_string()))?;
+        export_sync_data(&conn)?
+    };
+    let push = SyncMessage {
+        message_type: "sync_data".to_string(),
+        data: serde_json::to_value(local_data)?,
+        timestamp: now_secs(),
+    };
+    write_message(&mut stream, &push).await?;
+    let _ = read_message(&mut stream).await;
 
-        // 发送同步请求
-        let request = SyncMessage {
-            message_type: "request_sync".to_string(),
-            data: serde_json::Value::Null,
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-        };
-
-        stream.write_all(&serde_json::to_vec(&request)?).await?;
-
-        // 读取响应
-        let mut buf = [0u8; 4096];
-        let n = stream.read(&mut buf).await?;
-
-        if let Ok(response) = serde_json::from_slice::<SyncMessage>(&buf[..n]) {
-            if response.message_type == "sync_data" {
-                if let Ok(remote_data) = serde_json::from_value::<SyncData>(response.data) {
-                    self.merge_data(remote_data);
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    /// 合并远程数据
-    fn merge_data(&self, remote_data: SyncData) {
-        let mut data = self.data.lock().unwrap();
-        for item in remote_data.items {
-            if !data.items.iter().any(|i| i.id == item.id) {
-                data.items.push(item);
-            }
-        }
-    }
+    Ok(report)
 }

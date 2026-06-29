@@ -6,8 +6,8 @@
   "build": {
     "frontendDist": "../src-mobile/dist",
     "devUrl": "http://localhost:1421",
-    "beforeDevCommand": "cd ../src-mobile && npm run dev",
-    "beforeBuildCommand": "cd ../src-mobile && npm run build"
+    "beforeDevCommand": "cd src-mobile && npm run dev",
+    "beforeBuildCommand": "cd src-mobile && npm run build"
   },
   "app": {
     "windows": [

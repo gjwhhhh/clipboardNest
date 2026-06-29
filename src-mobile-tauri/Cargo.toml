@@ -20,6 +20,8 @@ serde_json = "1"
 log = "0.4"
 env_logger = "0.11"
 rusqlite = { version = "0.31", features = ["bundled"] }
+base64.workspace = true
+image.workspace = true
 
 # 移动端剪切板监控插件
 tauri-plugin-clipboard-monitor = { path = "plugins/tauri-plugin-clipboard-monitor" }

@@ -3,13 +3,15 @@ name = "tauri-plugin-clipboard-monitor"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
+build = "build.rs"
+links = "tauri-plugin-clipboard-monitor"
 
 [lib]
 name = "tauri_plugin_clipboard_monitor"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-plugin = { version = "2", features = ["build"] }
 
 [dependencies]
 tauri = { version = "2", features = [] }

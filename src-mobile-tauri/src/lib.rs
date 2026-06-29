@@ -5,6 +5,7 @@ pub mod sync;
 use std::sync::{Arc, Mutex};
 use tauri::{Listener, Manager};
 
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -28,11 +29,21 @@ pub fn run() {
             let db_conn = Arc::new(Mutex::new(conn));
             app.manage(commands::clipboard::DbState(db_conn.clone()));
 
+            let (device_id, device_name) = {
+                let conn = db_conn.lock().expect("无法锁定数据库连接");
+                (
+                    commands::sync::get_or_create_device_id(&conn).expect("无法获取同步设备 ID"),
+                    commands::sync::get_device_name(&conn).expect("无法获取同步设备名称"),
+                )
+            };
+            app.manage(commands::sync::SyncState::new(
+                db_conn.clone(),
+                device_id,
+                device_name,
+            ));
+
             // 启动剪切板监控
             let monitor_state = Arc::new(clipboard_monitor::MonitorState::new());
-            app.manage(clipboard_monitor::MonitorStateWrapper(
-                monitor_state.clone(),
-            ));
 
             // 监听剪切板更新事件
             let db_conn_clone = db_conn.clone();
@@ -59,12 +70,20 @@ pub fn run() {
             commands::clipboard::get_clipboard_history,
             commands::clipboard::search_clipboard,
             commands::clipboard::copy_to_clipboard,
+            commands::clipboard::save_clipboard_image,
+            commands::clipboard::get_file_data_url,
             commands::clipboard::delete_clipboard_item,
             commands::clipboard::pin_clipboard_item,
             commands::clipboard::favorite_clipboard_item,
             commands::clipboard::clear_all_history,
             commands::settings::get_settings,
             commands::settings::update_setting,
+            commands::sync::start_sync,
+            commands::sync::stop_sync,
+            commands::sync::get_local_sync_device,
+            commands::sync::get_discovered_devices,
+            commands::sync::sync_with_device,
+            commands::sync::sync_all_devices,
         ])
         .run(tauri::generate_context!())
         .expect("运行移动端应用时出错");

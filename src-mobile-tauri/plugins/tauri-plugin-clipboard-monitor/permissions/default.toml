@@ -1,0 +1,13 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = "Allows clipboard monitoring, read, and write commands."
+permissions = [
+  "allow-start-monitoring",
+  "allow-stop-monitoring",
+  "allow-get-text",
+  "allow-set-text",
+  "allow-get-image",
+  "allow-set-image",
+  "allow-update-clipboard-content",
+]

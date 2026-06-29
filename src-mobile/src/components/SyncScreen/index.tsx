@@ -2,14 +2,8 @@ import { useState, useEffect } from "react";
 import { ChevronLeft, Wifi, RefreshCw, Smartphone } from "lucide-react";
 import { useTranslation } from "../../hooks/useTranslation";
 import { invoke } from "@tauri-apps/api/core";
-
-interface Device {
-  id: string;
-  name: string;
-  address: string;
-  port: number;
-  last_seen: number;
-}
+import { useClipboardStore } from "../../stores/clipboardStore";
+import * as api from "../../utils/tauri";
 
 interface Props {
   onBack: () => void;
@@ -17,9 +11,10 @@ interface Props {
 
 export function SyncScreen({ onBack }: Props) {
   const { t } = useTranslation();
+  const { fetchItems, showToast } = useClipboardStore();
   const [isEnabled, setIsEnabled] = useState(false);
-  // TODO: 从实际同步服务获取设备列表
-  const [devices] = useState<Device[]>([]);
+  const [localDevice, setLocalDevice] = useState<api.SyncDevice | null>(null);
+  const [devices, setDevices] = useState<api.SyncDevice[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lastSync, setLastSync] = useState<string | null>(null);
 
@@ -27,12 +22,43 @@ export function SyncScreen({ onBack }: Props) {
     loadSyncState();
   }, []);
 
+  useEffect(() => {
+    if (!isEnabled) return;
+
+    let cancelled = false;
+    const refreshDevices = async () => {
+      try {
+        const discovered = await api.getDiscoveredDevices();
+        if (!cancelled) {
+          setDevices(discovered);
+        }
+      } catch (error) {
+        console.error("刷新设备列表失败:", error);
+      }
+    };
+
+    refreshDevices();
+    const timer = window.setInterval(refreshDevices, 5000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [isEnabled]);
+
   const loadSyncState = async () => {
     try {
       const settings = await invoke<Record<string, string>>("get_settings");
       setIsEnabled(settings.sync_enabled === "true");
       if (settings.last_sync) {
         setLastSync(new Date(parseInt(settings.last_sync)).toLocaleString());
+      }
+      if (settings.sync_enabled === "true") {
+        const device = await api.startSync();
+        setLocalDevice(device);
+        setDevices(await api.getDiscoveredDevices());
+      } else {
+        setLocalDevice(await api.getLocalSyncDevice());
       }
     } catch (error) {
       console.error("加载同步状态失败:", error);
@@ -42,23 +68,51 @@ export function SyncScreen({ onBack }: Props) {
   const handleToggleSync = async (enabled: boolean) => {
     setIsEnabled(enabled);
     try {
+      if (enabled) {
+        const device = await api.startSync();
+        setLocalDevice(device);
+        setDevices(await api.getDiscoveredDevices());
+      } else {
+        await api.stopSync();
+        setDevices([]);
+      }
       await invoke("update_setting", {
         key: "sync_enabled",
         value: String(enabled),
       });
     } catch (error) {
       console.error("更新同步设置失败:", error);
+      setIsEnabled(!enabled);
+      showToast("error", t("sync.toggleFailed"));
     }
   };
 
   const handleSyncNow = async () => {
+    if (devices.length === 0) {
+      showToast("error", t("sync.noDevices"));
+      return;
+    }
+
     setIsSyncing(true);
     try {
-      // TODO: 实际同步逻辑
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      setLastSync(new Date().toLocaleString());
+      const report = await api.syncAllDevices();
+      await fetchItems();
+      const now = new Date().toLocaleString();
+      setLastSync(now);
+      await invoke("update_setting", {
+        key: "last_sync",
+        value: String(Date.now()),
+      });
+      showToast(
+        "success",
+        t("sync.syncComplete", {
+          inserted: report.inserted,
+          updated: report.updated,
+        })
+      );
     } catch (error) {
       console.error("同步失败:", error);
+      showToast("error", t("sync.syncFailed"));
     } finally {
       setIsSyncing(false);
     }
@@ -98,6 +152,13 @@ export function SyncScreen({ onBack }: Props) {
 
         {isEnabled && (
           <>
+            {localDevice && (
+              <div className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
+                <div>{t("sync.deviceName")}: {localDevice.name}</div>
+                <div>{localDevice.address}:{localDevice.port}</div>
+              </div>
+            )}
+
             {/* 发现的设备 */}
             <div>
               <h3 className="font-medium mb-3">{t("sync.discoveredDevices")}</h3>
@@ -116,7 +177,9 @@ export function SyncScreen({ onBack }: Props) {
                       <Smartphone className="w-5 h-5 text-gray-400" />
                       <div className="flex-1">
                         <p className="font-medium">{device.name}</p>
-                        <p className="text-xs text-gray-500">{device.address}</p>
+                        <p className="text-xs text-gray-500">
+                          {device.address}:{device.port}
+                        </p>
                       </div>
                     </div>
                   ))}

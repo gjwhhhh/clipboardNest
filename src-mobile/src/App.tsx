@@ -13,6 +13,7 @@ import { useAppState } from "./hooks/useAppState";
 import { useTranslation } from "./hooks/useTranslation";
 import { Settings, Search, Star, Clock } from "lucide-react";
 import { invoke } from "@tauri-apps/api/core";
+import { ingestCurrentClipboard } from "./utils/tauri";
 
 type Tab = "home" | "search" | "favorites" | "settings";
 type Page = Tab | "sync";
@@ -26,15 +27,35 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [currentPage, setCurrentPage] = useState<Page>("home");
   const [showPermissionGuide, setShowPermissionGuide] = useState(false);
-  const { toast, hideToast } = useClipboardStore();
+  const { toast, hideToast, selectItem } = useClipboardStore();
 
   // 根据应用状态控制剪切板监控
   useEffect(() => {
+    let pollTimer: number | undefined;
+    let cancelled = false;
+
     if (appState === "active") {
-      invoke("plugin:clipboard-monitor|start_monitoring").catch(console.error);
+      invoke("plugin:clipboard-monitor|start_monitoring")
+        .then(() => {
+          if (cancelled) {
+            return;
+          }
+          ingestCurrentClipboard().catch(console.error);
+          pollTimer = window.setInterval(() => {
+            ingestCurrentClipboard().catch(console.error);
+          }, 3000);
+        })
+        .catch(console.error);
     } else {
       invoke("plugin:clipboard-monitor|stop_monitoring").catch(console.error);
     }
+
+    return () => {
+      cancelled = true;
+      if (pollTimer) {
+        window.clearInterval(pollTimer);
+      }
+    };
   }, [appState]);
 
   // 检查是否需要显示权限引导
@@ -49,6 +70,14 @@ function App() {
   const handleTabChange = (tab: Tab) => {
     setActiveTab(tab);
     setCurrentPage(tab);
+    selectItem(null);
+  };
+
+  const titleByTab: Record<Tab, string> = {
+    home: t("tabs.history"),
+    search: t("tabs.search"),
+    favorites: t("tabs.favorites"),
+    settings: t("tabs.settings"),
   };
 
   // 如果在同步页面
@@ -89,15 +118,15 @@ function App() {
     <div className="min-h-screen flex flex-col safe-top">
       {/* 头部 */}
       <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-        <h1 className="text-lg font-semibold">{t("app.title")}</h1>
+        <h1 className="text-lg font-semibold">{titleByTab[activeTab]}</h1>
       </div>
 
       {/* 搜索栏 */}
-      <SearchBar />
+      <SearchBar autoFocus={activeTab === "search"} />
 
       {/* 列表 */}
       <div className="flex-1 overflow-hidden">
-        <ClipboardList />
+        <ClipboardList favoritesOnly={activeTab === "favorites"} />
       </div>
 
       {/* 底部导航栏 */}

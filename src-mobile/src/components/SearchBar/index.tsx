@@ -1,11 +1,23 @@
+import { useEffect, useRef } from "react";
 import { Search, X } from "lucide-react";
 import { useClipboardStore } from "../../stores/clipboardStore";
 import { useTranslation } from "../../hooks/useTranslation";
 import type { FilterType } from "../../types";
 
-export function SearchBar() {
+interface Props {
+  autoFocus?: boolean;
+}
+
+export function SearchBar({ autoFocus = false }: Props) {
   const { searchQuery, search, activeFilter, setFilter } = useClipboardStore();
   const { t } = useTranslation();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (autoFocus) {
+      inputRef.current?.focus();
+    }
+  }, [autoFocus]);
 
   const filters: { label: string; value: FilterType }[] = [
     { label: t("search.all"), value: "all" },
@@ -19,6 +31,7 @@ export function SearchBar() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input
+          ref={inputRef}
           type="text"
           value={searchQuery}
           onChange={(e) => search(e.target.value)}

@@ -10,6 +10,8 @@
   },
   "clipboard": {
     "empty": "No clipboard content",
+    "emptyFavorites": "No favorites yet",
+    "emptySearch": "No matching content",
     "copied": "Copied",
     "deleted": "Deleted",
     "favorited": "Favorited",
@@ -58,7 +60,10 @@
     "syncNow": "Sync now",
     "syncing": "Syncing...",
     "lastSync": "Last sync",
-    "never": "Never synced"
+    "never": "Never synced",
+    "toggleFailed": "Failed to update sync setting",
+    "syncFailed": "Sync failed",
+    "syncComplete": "Sync complete, {{inserted}} added, {{updated}} updated"
   },
   "permission": {
     "title": "Clipboard Access",

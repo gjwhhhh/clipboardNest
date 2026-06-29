@@ -1,8 +1,16 @@
 fn main() {
-    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
-        println!("cargo:rerun-if-changed=build.rs");
-        return;
-    }
+    const COMMANDS: &[&str] = &[
+        "start_monitoring",
+        "stop_monitoring",
+        "get_text",
+        "set_text",
+        "get_image",
+        "set_image",
+        "update_clipboard_content",
+    ];
 
-    tauri_build::build()
+    tauri_plugin::Builder::new(COMMANDS)
+        .android_path("android")
+        .ios_path("ios")
+        .build();
 }

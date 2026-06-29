@@ -7,6 +7,7 @@ interface Props {
   items: ClipboardItemType[];
   selectedId: number | null;
   onClick: (item: ClipboardItemType) => void;
+  onPreview: (item: ClipboardItemType) => void;
   onDelete: (id: number) => void;
   onFavorite: (id: number, favorite: boolean) => void;
 }
@@ -15,6 +16,7 @@ export function VirtualList({
   items,
   selectedId,
   onClick,
+  onPreview,
   onDelete,
   onFavorite,
 }: Props) {
@@ -35,6 +37,7 @@ export function VirtualList({
               item={item}
               isSelected={item.id === selectedId}
               onClick={() => onClick(item)}
+              onLongPress={() => onPreview(item)}
             />
           </SwipeableItem>
         );

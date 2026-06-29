@@ -1,10 +1,43 @@
+import { useEffect, useState } from "react";
 import { useClipboardStore } from "../../stores/clipboardStore";
 import { useTranslation } from "../../hooks/useTranslation";
 import { Copy, FileText, Image, File, X } from "lucide-react";
+import { getFileDataUrl } from "../../utils/tauri";
 
 export function PreviewPanel() {
   const { selectedItem, copyItem, selectItem } = useClipboardStore();
   const { t } = useTranslation();
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (selectedItem?.contentType !== "image") {
+      setImageUrl(null);
+      return;
+    }
+
+    const imagePath = selectedItem.thumbnailPath || selectedItem.filePath;
+    if (!imagePath) {
+      setImageUrl(null);
+      return;
+    }
+
+    let cancelled = false;
+    getFileDataUrl(imagePath)
+      .then((url) => {
+        if (!cancelled) {
+          setImageUrl(url);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setImageUrl(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedItem?.id, selectedItem?.contentType, selectedItem?.filePath, selectedItem?.thumbnailPath]);
 
   if (!selectedItem) {
     return null;
@@ -13,9 +46,9 @@ export function PreviewPanel() {
   const renderContent = () => {
     switch (selectedItem.contentType) {
       case "image":
-        return selectedItem.filePath ? (
+        return imageUrl ? (
           <img
-            src={`asset://localhost/${selectedItem.filePath}`}
+            src={imageUrl}
             alt="clipboard"
             className="max-w-full max-h-[300px] object-contain rounded-lg"
           />

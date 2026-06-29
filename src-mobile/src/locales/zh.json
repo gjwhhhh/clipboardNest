@@ -10,6 +10,8 @@
   },
   "clipboard": {
     "empty": "暂无剪切板内容",
+    "emptyFavorites": "暂无收藏内容",
+    "emptySearch": "没有找到匹配内容",
     "copied": "已复制",
     "deleted": "已删除",
     "favorited": "已收藏",
@@ -58,7 +60,10 @@
     "syncNow": "立即同步",
     "syncing": "同步中...",
     "lastSync": "上次同步",
-    "never": "从未同步"
+    "never": "从未同步",
+    "toggleFailed": "同步开关更新失败",
+    "syncFailed": "同步失败",
+    "syncComplete": "同步完成，新增 {{inserted}} 条，更新 {{updated}} 条"
   },
   "permission": {
     "title": "剪切板访问说明",

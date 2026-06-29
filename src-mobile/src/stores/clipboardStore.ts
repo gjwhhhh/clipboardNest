@@ -76,6 +76,18 @@ export const useClipboardStore = create<ClipboardState>((set, get) => ({
   copyItem: async (item: ClipboardItem) => {
     try {
       await api.copyToClipboard(item.id);
+      if (item.contentType === "text" || item.contentType === "richtext") {
+        if (!item.content) {
+          throw new Error("剪切板内容为空");
+        }
+        await api.writeTextToClipboard(item.content);
+      } else if (item.contentType === "image") {
+        const imagePath = item.filePath || item.thumbnailPath;
+        if (!imagePath) {
+          throw new Error("图片尚未保存");
+        }
+        await api.writeImageToClipboard(imagePath);
+      }
       get().showToast("success", "已复制到剪切板");
     } catch (error) {
       get().showToast("error", "复制失败");

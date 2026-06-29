@@ -1,99 +1,91 @@
+use std::io;
 use std::sync::{Arc, Mutex};
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
-use tokio::net::TcpListener;
 
-use super::{SyncData, SyncMessage};
+use rusqlite::Connection;
+use tokio::net::{TcpListener, TcpStream};
+use tokio::task::JoinHandle;
 
-/// 同步服务器
-pub struct SyncServer {
+use super::{
+    export_sync_data, max_items_from_settings, merge_sync_data, now_secs, read_message,
+    write_message, SyncMessage,
+};
+
+pub async fn start_server(
     port: u16,
-    data: Arc<Mutex<SyncData>>,
-}
+    db_conn: Arc<Mutex<Connection>>,
+) -> Result<JoinHandle<()>, Box<dyn std::error::Error + Send + Sync>> {
+    let listener = TcpListener::bind(("0.0.0.0", port)).await?;
+    log::info!("同步服务器启动在端口 {}", port);
 
-impl SyncServer {
-    pub fn new(port: u16, data: Arc<Mutex<SyncData>>) -> Self {
-        Self { port, data }
-    }
-
-    /// 启动同步服务器
-    pub async fn start(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let listener = TcpListener::bind(format!("0.0.0.0:{}", self.port)).await?;
-        log::info!("同步服务器启动在端口 {}", self.port);
-
-        let data = self.data.clone();
-
-        tokio::spawn(async move {
-            loop {
-                if let Ok((mut socket, addr)) = listener.accept().await {
-                    log::info!("新连接: {}", addr);
-                    let data = data.clone();
-
+    Ok(tokio::spawn(async move {
+        loop {
+            match listener.accept().await {
+                Ok((socket, addr)) => {
+                    log::info!("同步连接: {}", addr);
+                    let db_conn = db_conn.clone();
                     tokio::spawn(async move {
-                        let mut buf = [0u8; 4096];
-                        loop {
-                            match socket.read(&mut buf).await {
-                                Ok(0) => break,
-                                Ok(n) => {
-                                    if let Ok(msg) =
-                                        serde_json::from_slice::<SyncMessage>(&buf[..n])
-                                    {
-                                        let response = handle_message(&data, msg).await;
-                                        let _ = socket
-                                            .write_all(&serde_json::to_vec(&response).unwrap())
-                                            .await;
-                                    }
-                                }
-                                Err(_) => break,
-                            }
+                        if let Err(error) = handle_socket(socket, db_conn).await {
+                            log::warn!("同步连接处理失败: {}", error);
                         }
                     });
                 }
-            }
-        });
-
-        Ok(())
-    }
-}
-
-async fn handle_message(data: &Arc<Mutex<SyncData>>, msg: SyncMessage) -> SyncMessage {
-    match msg.message_type.as_str() {
-        "request_sync" => {
-            let data = data.lock().unwrap();
-            SyncMessage {
-                message_type: "sync_data".to_string(),
-                data: serde_json::to_value(&*data).unwrap(),
-                timestamp: std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs(),
-            }
-        }
-        "sync_data" => {
-            if let Ok(new_data) = serde_json::from_value::<SyncData>(msg.data) {
-                let mut data = data.lock().unwrap();
-                // 合并数据（简单策略：去重合并）
-                for item in new_data.items {
-                    if !data.items.iter().any(|i| i.id == item.id) {
-                        data.items.push(item);
-                    }
+                Err(error) => {
+                    log::warn!("同步服务器 accept 失败: {}", error);
+                    break;
                 }
             }
-            SyncMessage {
-                message_type: "sync_complete".to_string(),
-                data: serde_json::Value::Null,
-                timestamp: std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs(),
-            }
         }
-        _ => SyncMessage {
-            message_type: "error".to_string(),
-            data: serde_json::json!({"message": "Unknown message type"}),
-            timestamp: std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs(),
-        },
+    }))
+}
+
+async fn handle_socket(
+    mut socket: TcpStream,
+    db_conn: Arc<Mutex<Connection>>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    loop {
+        let msg = match read_message(&mut socket).await {
+            Ok(msg) => msg,
+            Err(_) => break,
+        };
+
+        let response = match msg.message_type.as_str() {
+            "request_sync" => {
+                let data = {
+                    let conn = db_conn
+                        .lock()
+                        .map_err(|e| io::Error::other(e.to_string()))?;
+                    export_sync_data(&conn)?
+                };
+                SyncMessage {
+                    message_type: "sync_data".to_string(),
+                    data: serde_json::to_value(data)?,
+                    timestamp: now_secs(),
+                }
+            }
+            "sync_data" => {
+                let data = serde_json::from_value(msg.data)?;
+                let report = {
+                    let conn = db_conn
+                        .lock()
+                        .map_err(|e| io::Error::other(e.to_string()))?;
+                    let max_items = max_items_from_settings(&conn);
+                    merge_sync_data(&conn, data, max_items)?
+                };
+                SyncMessage {
+                    message_type: "sync_complete".to_string(),
+                    data: serde_json::to_value(report)?,
+                    timestamp: now_secs(),
+                }
+            }
+            _ => SyncMessage {
+                message_type: "error".to_string(),
+                data: serde_json::json!({"message": "Unknown message type"}),
+                timestamp: now_secs(),
+            },
+        };
+
+        write_message(&mut socket, &response).await?;
     }
+
+    Ok(())
 }

@@ -1,123 +1,150 @@
 package com.clipboard.plugin
 
+import android.app.Activity
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
+import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Base64
+import androidx.core.content.FileProvider
+import app.tauri.annotation.Command
+import app.tauri.annotation.TauriPlugin
+import app.tauri.plugin.Invoke
+import app.tauri.plugin.JSObject
+import app.tauri.plugin.Plugin
 import java.io.ByteArrayOutputStream
+import java.io.File
 
-class ClipboardMonitorPlugin(private val context: Context) {
-    private var clipboardManager: ClipboardManager? = null
+@TauriPlugin
+class ClipboardMonitorPlugin(private val activity: Activity) : Plugin(activity) {
+    private val clipboardManager: ClipboardManager by lazy {
+        activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    }
     private var listener: ClipboardManager.OnPrimaryClipChangedListener? = null
-    private var onClipboardChanged: ((String) -> Unit)? = null
     private var lastClipText: String? = null
 
-    /// 设置剪切板变化回调
-    fun setCallback(callback: (String) -> Unit) {
-        this.onClipboardChanged = callback
-    }
-
-    /// 开始监听剪切板
-    fun startMonitoring() {
-        clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
-
-        clipboardManager?.let { manager ->
+    @Command
+    fun startMonitoring(invoke: Invoke) {
+        if (listener == null) {
             listener = ClipboardManager.OnPrimaryClipChangedListener {
                 handleClipboardChange()
             }
-            manager.addPrimaryClipChangedListener(listener)
+            clipboardManager.addPrimaryClipChangedListener(listener)
         }
-
-        println("[ClipboardMonitor] 开始监听剪切板")
+        invoke.resolve()
     }
 
-    /// 停止监听剪切板
-    fun stopMonitoring() {
-        listener?.let { listener ->
-            clipboardManager?.removePrimaryClipChangedListener(listener)
-        }
+    @Command
+    fun stopMonitoring(invoke: Invoke) {
+        listener?.let { clipboardManager.removePrimaryClipChangedListener(it) }
         listener = null
-
-        println("[ClipboardMonitor] 停止监听剪切板")
+        invoke.resolve()
     }
 
-    /// 处理剪切板变化
+    @Command
+    fun getText(invoke: Invoke) {
+        try {
+            val result = JSObject()
+            result.put("text", readText())
+            invoke.resolve(result)
+        } catch (ex: Exception) {
+            invoke.reject(ex.message, ex)
+        }
+    }
+
+    @Command
+    fun setText(invoke: Invoke) {
+        try {
+            val text = invoke.parseArgs(String::class.java)
+            val clipData = ClipData.newPlainText("clipboard", text)
+            clipboardManager.setPrimaryClip(clipData)
+            lastClipText = text
+            invoke.resolve()
+        } catch (ex: Exception) {
+            invoke.reject(ex.message, ex)
+        }
+    }
+
+    @Command
+    fun getImage(invoke: Invoke) {
+        try {
+            val result = JSObject()
+            val imageBytes = readImage()
+            result.put("data_url", imageBytes?.let { bytes ->
+                "data:image/png;base64," + Base64.encodeToString(bytes, Base64.NO_WRAP)
+            })
+            invoke.resolve(result)
+        } catch (ex: Exception) {
+            invoke.reject(ex.message, ex)
+        }
+    }
+
+    @Command
+    fun setImage(invoke: Invoke) {
+        try {
+            val dataUrl = invoke.parseArgs(String::class.java)
+            val bytes = decodeDataUrl(dataUrl)
+            val imagesDir = File(activity.cacheDir, "clipboard_images").apply { mkdirs() }
+            val imageFile = File(imagesDir, "clipboard.png")
+            imageFile.writeBytes(bytes)
+
+            val uri = FileProvider.getUriForFile(
+                activity,
+                "${activity.packageName}.fileprovider",
+                imageFile
+            )
+            val clipData = ClipData.newUri(activity.contentResolver, "clipboard image", uri)
+            clipboardManager.setPrimaryClip(clipData)
+            invoke.resolve()
+        } catch (ex: Exception) {
+            invoke.reject(ex.message, ex)
+        }
+    }
+
     private fun handleClipboardChange() {
-        val clipData = clipboardManager?.primaryClip ?: return
-
-        if (clipData.itemCount > 0) {
-            val item = clipData.getItemAt(0)
-            val text = item.text?.toString()
-
-            if (!text.isNullOrEmpty() && text != lastClipText) {
-                lastClipText = text
-                onClipboardChanged?.invoke(text)
-            }
+        val text = readText()
+        if (!text.isNullOrBlank() && text != lastClipText) {
+            lastClipText = text
+            val payload = JSObject()
+            payload.put("text", text)
+            payload.put("content_type", "text")
+            trigger("clipboard-updated", payload)
         }
     }
 
-    /// 获取剪切板文本
-    fun getText(): String? {
-        val clipData = clipboardManager?.primaryClip ?: return null
-        return if (clipData.itemCount > 0) {
-            clipData.getItemAt(0).text?.toString()
-        } else {
-            null
-        }
+    private fun readText(): String? {
+        val clipData = clipboardManager.primaryClip ?: return null
+        if (clipData.itemCount == 0) return null
+        return clipData.getItemAt(0).text?.toString()
     }
 
-    /// 设置剪切板文本
-    fun setText(text: String) {
-        val clipData = ClipData.newPlainText("clipboard", text)
-        clipboardManager?.setPrimaryClip(clipData)
-    }
-
-    /// 获取剪切板图片
-    fun getImage(): ByteArray? {
-        val clipData = clipboardManager?.primaryClip ?: return null
+    private fun readImage(): ByteArray? {
+        val clipData = clipboardManager.primaryClip ?: return null
         if (clipData.itemCount == 0) return null
 
-        val item = clipData.getItemAt(0)
-        val uri = item.uri ?: return null
-
+        val uri: Uri = clipData.getItemAt(0).uri ?: return null
         return try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                val source = ImageDecoder.createSource(context.contentResolver, uri)
-                val bitmap = ImageDecoder.decodeBitmap(source)
-                val outputStream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-                outputStream.toByteArray()
+            val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                val source = ImageDecoder.createSource(activity.contentResolver, uri)
+                ImageDecoder.decodeBitmap(source)
             } else {
                 @Suppress("DEPRECATION")
-                val bitmap = MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-                val outputStream = ByteArrayOutputStream()
-                bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
-                outputStream.toByteArray()
+                MediaStore.Images.Media.getBitmap(activity.contentResolver, uri)
             }
-        } catch (e: Exception) {
-            println("[ClipboardMonitor] 获取图片失败: ${e.message}")
+            val outputStream = ByteArrayOutputStream()
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+            outputStream.toByteArray()
+        } catch (_: Exception) {
             null
         }
     }
 
-    /// 设置剪切板图片
-    fun setImage(imageData: ByteArray) {
-        // Android 设置图片需要通过 ContentProvider，这里简化处理
-        println("[ClipboardMonitor] 设置图片功能暂未实现")
-    }
-
-    /// 检查剪切板是否有内容
-    fun hasContent(): Boolean {
-        val clipData = clipboardManager?.primaryClip ?: return false
-        return clipData.itemCount > 0
-    }
-
-    /// 清空剪切板
-    fun clear() {
-        val clipData = ClipData.newPlainText("", "")
-        clipboardManager?.setPrimaryClip(clipData)
+    private fun decodeDataUrl(dataUrl: String): ByteArray {
+        val encoded = dataUrl.substringAfter(",", dataUrl)
+        return Base64.decode(encoded, Base64.DEFAULT)
     }
 }
