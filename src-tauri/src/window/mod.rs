@@ -1,5 +1,5 @@
 // 窗口管理模块
-use tauri::WebviewWindow;
+use tauri::{AppHandle, Emitter, Manager, Runtime, WebviewWindow};
 
 /// 计算窗口居中位置
 pub fn calculate_center_position(
@@ -32,6 +32,19 @@ pub fn position_near_mouse(window: &WebviewWindow) -> Result<(), Box<dyn std::er
     }
 
     Ok(())
+}
+
+pub fn show_main_window<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(window) = app.get_webview_window("main") {
+        show_window(&window);
+    }
+}
+
+pub fn show_window<R: Runtime>(window: &WebviewWindow<R>) {
+    let _ = window.show();
+    let _ = window.unminimize();
+    let _ = window.set_focus();
+    let _ = window.emit("window-shown", ());
 }
 
 #[cfg(test)]

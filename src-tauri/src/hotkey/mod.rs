@@ -1,6 +1,6 @@
 // 全局快捷键模块
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
+use tauri::{AppHandle, Manager, WebviewWindow};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut};
 
 pub fn default_hotkey() -> &'static str {
@@ -154,10 +154,7 @@ pub fn toggle_window(window: &WebviewWindow) {
         let _ = window.hide();
     } else {
         let _ = crate::window::position_near_mouse(window);
-        let _ = window.show();
-        let _ = window.set_focus();
-        // 通知前端窗口已显示，触发刷新
-        let _ = window.emit("window-shown", ());
+        crate::window::show_window(window);
     }
 }
 

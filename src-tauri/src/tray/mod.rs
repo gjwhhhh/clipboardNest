@@ -2,7 +2,7 @@
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    App, Emitter, Manager,
+    App,
 };
 
 pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
@@ -21,20 +21,10 @@ pub fn create_tray(app: &App) -> Result<(), Box<dyn std::error::Error>> {
         .tooltip("剪切板管理器")
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                    // 通知前端窗口已显示，触发刷新
-                    let _ = window.emit("window-shown", ());
-                }
+                crate::window::show_main_window(app);
             }
             "settings" => {
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                    // 通知前端窗口已显示，触发刷新
-                    let _ = window.emit("window-shown", ());
-                }
+                crate::window::show_main_window(app);
             }
             "quit" => {
                 app.exit(0);

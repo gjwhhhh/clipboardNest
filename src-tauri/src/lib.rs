@@ -14,7 +14,7 @@ pub fn run() {
     // 初始化日志，默认关闭，通过 RUST_LOG 环境变量开启（如 RUST_LOG=info）
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("off")).init();
 
-    tauri::Builder::default()
+    let app = tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_shell::init())
         .setup(|app| {
@@ -130,6 +130,13 @@ pub fn run() {
             commands::settings::update_setting,
             commands::settings::update_hotkey,
         ])
-        .run(tauri::generate_context!())
-        .expect("运行 tauri 应用程序时出错");
+        .build(tauri::generate_context!())
+        .expect("初始化 tauri 应用程序时出错");
+
+    app.run(|app_handle, event| {
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Reopen { .. } = event {
+            crate::window::show_main_window(app_handle);
+        }
+    });
 }
